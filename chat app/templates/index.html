@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat App - Home</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 0.95em;
+        }
+
+        .input-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            color: #555;
+            margin-bottom: 8px;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s;
+            outline: none;
+        }
+
+        input[type="text"]:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .divider {
+            text-align: center;
+            margin: 30px 0;
+            position: relative;
+        }
+
+        .divider::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            width: 100%;
+            height: 1px;
+            background: #e0e0e0;
+        }
+
+        .divider span {
+            background: white;
+            padding: 0 15px;
+            color: #999;
+            position: relative;
+            font-size: 0.9em;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            margin-bottom: 15px;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: #f5f5f5;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+
+        .btn-secondary:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .error-message {
+            background: #fee;
+            border: 1px solid #fcc;
+            color: #c33;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+            font-size: 0.9em;
+        }
+
+        .join-section {
+            display: flex;
+            gap: 10px;
+        }
+
+        .join-section input {
+            flex: 1;
+        }
+
+        .join-section button {
+            padding: 15px 25px;
+            width: auto;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 30px 20px;
+            }
+
+            h1 {
+                font-size: 2em;
+            }
+
+            .join-section {
+                flex-direction: column;
+            }
+
+            .join-section button {
+                width: 100%;
+            }
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            color: #667eea;
+            margin-top: 15px;
+            font-size: 0.9em;
+        }
+
+        .loading::after {
+            content: '...';
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>💬 Chat App</h1>
+        <p class="subtitle">Connect with anyone, anywhere in real-time</p>
+
+        <div id="errorMessage" class="error-message"></div>
+
+        <div class="input-group">
+            <label for="username">Your Name</label>
+            <input type="text" id="username" placeholder="Enter your username" maxlength="20" required>
+        </div>
+
+        <button class="btn btn-primary" id="createRoomBtn">
+            🚀 Create New Room
+        </button>
+
+        <div class="divider">
+            <span>OR</span>
+        </div>
+
+        <div class="input-group">
+            <label for="roomId">Room ID</label>
+            <div class="join-section">
+                <input type="text" id="roomId" placeholder="Enter room ID" maxlength="6" 
+                       style="text-transform: uppercase;">
+                <button class="btn btn-secondary" id="joinRoomBtn">
+                    Join
+                </button>
+            </div>
+        </div>
+
+        <div class="loading" id="loading">Connecting</div>
+    </div>
+
+    <script>
+        // Initialize Socket.IO connection
+        const socket = io();
+
+        // DOM elements
+        const usernameInput = document.getElementById('username');
+        const roomIdInput = document.getElementById('roomId');
+        const createRoomBtn = document.getElementById('createRoomBtn');
+        const joinRoomBtn = document.getElementById('joinRoomBtn');
+        const errorMessage = document.getElementById('errorMessage');
+        const loading = document.getElementById('loading');
+
+        // Auto-uppercase room ID input
+        roomIdInput.addEventListener('input', function() {
+            this.value = this.value.toUpperCase();
+        });
+
+        // Load saved username from localStorage
+        const savedUsername = localStorage.getItem('chatUsername');
+        if (savedUsername) {
+            usernameInput.value = savedUsername;
+        }
+
+        // Show error message
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+            setTimeout(() => {
+                errorMessage.style.display = 'none';
+            }, 5000);
+        }
+
+        // Validate username
+        function validateUsername() {
+            const username = usernameInput.value.trim();
+            if (!username) {
+                showError('Please enter a username');
+                usernameInput.focus();
+                return false;
+            }
+            if (username.length < 2) {
+                showError('Username must be at least 2 characters');
+                usernameInput.focus();
+                return false;
+            }
+            return true;
+        }
+
+        // Set loading state
+        function setLoading(isLoading) {
+            createRoomBtn.disabled = isLoading;
+            joinRoomBtn.disabled = isLoading;
+            usernameInput.disabled = isLoading;
+            roomIdInput.disabled = isLoading;
+            loading.style.display = isLoading ? 'block' : 'none';
+        }
+
+        // Create room
+        createRoomBtn.addEventListener('click', function() {
+            if (!validateUsername()) return;
+
+            const username = usernameInput.value.trim();
+            localStorage.setItem('chatUsername', username);
+            
+            setLoading(true);
+            socket.emit('create_room', { username });
+        });
+
+        // Join room
+        joinRoomBtn.addEventListener('click', function() {
+            joinRoom();
+        });
+
+        // Allow Enter key to join room
+        roomIdInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                joinRoom();
+            }
+        });
+
+        function joinRoom() {
+            if (!validateUsername()) return;
+
+            const roomId = roomIdInput.value.trim().toUpperCase();
+            const username = usernameInput.value.trim();
+
+            if (!roomId) {
+                showError('Please enter a room ID');
+                roomIdInput.focus();
+                return;
+            }
+
+            if (roomId.length !== 6) {
+                showError('Room ID must be 6 characters');
+                roomIdInput.focus();
+                return;
+            }
+
+            localStorage.setItem('chatUsername', username);
+            
+            setLoading(true);
+            socket.emit('join_room', { room_id: roomId, username });
+        }
+
+        // Socket event handlers
+        socket.on('connect', function() {
+            console.log('Connected to server');
+        });
+
+        socket.on('room_created', function(data) {
+            console.log('Room created:', data.room_id);
+            // Redirect to chat page with room info
+            window.location.href = `/chat?room=${data.room_id}&username=${encodeURIComponent(usernameInput.value.trim())}`;
+        });
+
+        socket.on('room_joined', function(data) {
+            console.log('Joined room:', data.room_id);
+            // Redirect to chat page
+            window.location.href = `/chat?room=${data.room_id}&username=${encodeURIComponent(data.username)}`;
+        });
+
+        socket.on('error', function(data) {
+            setLoading(false);
+            showError(data.message);
+        });
+
+        socket.on('disconnect', function() {
+            console.log('Disconnected from server');
+            setLoading(false);
+        });
+    </script>
+</body>
+</html>
